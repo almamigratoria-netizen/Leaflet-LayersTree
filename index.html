@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Leaflet-TreeLayerControl</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/2.0.0-alpha.1/leaflet.css">
+    <link rel="stylesheet" href="./css/boxicons.css">
+    <link rel='icon' href='favicon.svg'>
+    <style>
+      html, body, #mapdiv {
+        height: 100%;
+        width: 100%;
+        padding: 0px !important;
+        margin: 0px;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="mapdiv"></div>
+    <!--
+        "leaflet": "https://cdnjs.cloudflare.com/ajax/libs/leaflet/2.0.0-alpha.1/leaflet.js",
+    -->
+    <script type='importmap'>
+    {
+      "imports": {
+        "leaflet": "../../libs/leaflet/src/leaflet.js",
+        "LayersTree": "./LayersTree.mjs",
+        "SVGMarker": "../Leaflet-SVGMarkers/SVGMarker.js"
+      }
+    }
+    </script>
+    <script type="module">
+      import { Map, Marker, TileLayer, GeoJSON, Tooltip } from 'leaflet';
+      import { LayersTree } from 'LayersTree';
+      import { SVGMarker } from 'SVGMarker';
+
+      // Create a map in the "map" div, set the view to Dhaka, Bangladesh
+      const map = new Map('mapdiv').setView([23.74, 90.38], 14);
+      // add an OpenStreetMap tile layer
+      const OSM = 'https://{s}.tile.osm.org/{z}/{x}/{y}.png';
+      const basemap = new TileLayer(OSM);
+      basemap.addTo(map);
+
+
+      const askOSM = async function(query) {
+          const customMarker = function(point, latlng) {
+              let ptype = point.properties.type || "unknown";
+              let guide = {
+                  restaurant: { color: 'black', glyph: 'bx-fork-spoon' },
+                  bar: {color: 'yellow', glyph: 'bx-champagne', glyphColor: 'black'},
+                  cafe: {color: 'brown', glyph: 'bx-cup'},
+                  hospital: {color: 'red', glyph: 'bx-cursor-cell'},
+                  cinema: {color: 'blue', glyph: 'bx-video'},
+                  pub: {color: 'yellow'},
+              };
+              let options = guide[ptype] || {};
+              return new SVGMarker(latlng, options);
+          }
+          const area = map.getBounds();
+          const sw = area.getSouthWest();
+          const ne = area.getNorthEast();
+          const viewbox = `${sw.lng},${sw.lat},${ne.lng},${ne.lat}`
+          query = encodeURIComponent(query);
+          const NOSM = 'https://nominatim.osm.org/search?format=geojson';
+          const url = NOSM + `&bounded=1&viewbox=${viewbox}&amenity=${query}`
+          let layer = null;
+          try {
+              let r = await fetch(url);
+              if (r.ok) {
+                  const j = await r.json();
+                  let geojsonOptions = { pointToLayer: customMarker, }
+                  layer = new GeoJSON(j, geojsonOptions); 
+              } else {
+                  console.log(await j.text());
+              }
+          } catch (e) { console.log(`${e.name}: ${e.message}`) }
+          return layer;
+//          ... read the docs on pointToLayer, add SVGMarkers
+      }
+
+      // Categories: civil services (police, hospitals, post office)
+      //             Food (bars, cafe, restaurant, fast-food)
+      //             Shopping (a, b, c)
+      //             Entertainment (cinema, park)
+      const getSomeLayers = async function() {
+          let overlays = {};
+          const list = [ 
+              "restaurant", "bar", "cafe", "hospital",
+              "cinema",
+                       ];
+          for (const amenity of list) {
+              const layer = await askOSM(amenity);
+              if (layer) {
+                  overlays[amenity] = layer;
+              }
+          }
+          // return an array of layers/layerGroups
+
+          // by repeatedly calling askOSM
+          // we start with a flat array
+          // then we move on to JSON-like structures
+          return overlays;
+      }
+      const center = map.getCenter();
+      const banner = '<h4>Dhaka, Bangladesh</h4>';
+      const tooltip = new Tooltip(center, {permanent: true, content: banner});
+      tooltip.addTo(map);
+      const overlays = await getSomeLayers();
+      const baselayers = { 'OpenStreetMap': basemap };
+      tooltip.removeFrom(map);
+      new LayersTree(baselayers, overlays).addTo(map);
+    </script>
+  </body>
+</html>
+
