@@ -7,8 +7,9 @@ decorated layers get added to the named group.
 
 It does not currently handle nested trees.
 
-![ScreenShot](./Screenshot.png "Screen Shot")
 See the [demo](https://almamigratoria-netizen.github.io/Leaflet-LayersTree/)
+
+![ScreenShot](./Screenshot.png "Screen Shot")<br/>
 
 # Usage Example
 ```js
@@ -22,9 +23,7 @@ In addition to the normal Control Layers options, you can specify
 treeviews.
 
 # License
-MIT
-
-
+Released under the terms of the [MIT](LICENSE) license.
 
 
 #
