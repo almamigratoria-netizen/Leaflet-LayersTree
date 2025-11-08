@@ -5,266 +5,230 @@
 //  No dependencies.
 //
 
-import { Layer, Control, Util } from 'leaflet';
+import { Control, DomEvent, Layer, Util } from 'leaflet';
 
 const LayersTree_defaults = {
-    // actuall should be
-    // collapsed: true,
-    // treeCollapsed: true,
     collapsed: false,
-    treeCollapsed: false,
+    treeCollapsed: true,
+    // ROADMAP:(nested groups) GroupSeparator: '|',
+    // ROADMAP:sanitizer: null,   // function to sanitize strings (must return 
+                                  // trustedHTML).
 }
 
-class LayersTree extends Control.Layers {
-    // Seems to be that doing just this, I should
-    // get behaviour almost identical to the regular
-    // Control.Layers
+export class LayersTree extends Control.Layers {
     constructor(baselayers=[], overlays=[], options={}) {
         super();
         Util.setOptions(this, LayersTree_defaults);
         this.initialize(baselayers, overlays, options);
     }
-    // we'll call them "Groups"
+
+    _toggleExpand(e) {
+        // Because of event progagation, this could have been triggered 
+        // on any of the three elements that comprise the label.
+        // Need to sort that out.
+        const target = event.target;
+        if (!target) { return false; }
+        let realTarget = target;
+        if (target.parentElement.className == 'groupLabel') {
+            realTarget = target.parentElement;
+        }
+        e.stopPropagation();  // Stop event ripple
+        const mama = realTarget.parentElement;
+        let block = mama.querySelector('.LayersTreeExpandable');
+        let icon = mama.querySelector('.iconSpan');
+        if (block) {
+            block.classList.toggle('expanded');
+            block.classList.toggle('collapsed');
+        }
+        if (icon) {
+            icon.classList.toggle('expanded');
+            icon.classList.toggle('collapsed');
+        }
+    }
+
+    _createGroupContainer(obj, groupName) {
+        // Do we want to use DOMUtils for this?
+        // It'd be more leaflet-ish
+        const group_container = document.createElement('div');
+        group_container.className = 'LayersTree';
+        const glabel = document.createElement('span');
+        glabel.dataset.groupname = groupName;
+        glabel.className = 'groupLabel';
+        DomEvent.on(glabel, 'click', this._toggleExpand, this);
+        const iconspan = document.createElement('button');
+        iconspan.className = 'iconSpan';
+        glabel.appendChild(iconspan);
+        const textspan = document.createElement('span');
+        textspan.className = 'textspan';
+        textspan.textContent = groupName;
+        glabel.appendChild(textspan);
+        group_container.appendChild(glabel);
+        let container = this._overlaysList;
+        if (!obj.overlay) {
+            container = this._baseLayersList;
+        }
+        container.appendChild(group_container);
+        const labelsdiv = document.createElement('div');
+        labelsdiv.className = 'LayersTreeExpandable';
+        if (this.options.treeCollapsed == false) {
+            labelsdiv.classList.add('expanded');
+            iconspan.classList.add('expanded');
+        } else {
+            labelsdiv.classList.add('collapsed');
+            iconspan.classList.add('collapsed');
+        }
+        group_container.appendChild(labelsdiv);
+        this.groups[groupName] = labelsdiv;
+        return group_container;
+    }
+
+    _addItem(obj) {
+        const label = document.createElement('label'),
+        checked = this._map.hasLayer(obj.layer);
+        const input = document.createElement('input');
+        input.type = obj.overlay ? 'checkbox' : 'radio';
+        input.className = 'leaflet-control-layers-selector';
+        input.defaultChecked = checked;
+        if (!obj.overlay) {
+        	input.name = `leaflet-base-layers_${Util.stamp(this)}`;
+        }
+
+        this._layerControlInputs.push(input);
+        input.layerId = Util.stamp(obj.layer);
+
+        DomEvent.on(input, 'click', this._onInputClick, this);
+
+        const name = document.createElement('span');
+        const group = obj.layer._LTgroup || undefined;
+        // how evil is .innerHTML?  Do we need to fix this?
+        name.innerHTML = `${obj.name}`;
+
+        // Helps from preventing layer control flicker when checkboxes 
+        // are disabled  (https://github.com/Leaflet/Leaflet/issues/2771)
+        const holder = document.createElement('span');
+
+        label.appendChild(holder);
+        if (group) {
+            label.className = 'groupLabel';
+        }
+        holder.appendChild(input);
+        holder.appendChild(name);
+
+        if (!this.groups) {
+            this.groups = {};
+        }
+        let group_container = this.groups[group] || null;
+        // Create the group label
+        // ROADMAP:  Nested groups
+        if (group && !group_container) {
+            group_container = this._createGroupContainer(obj, group)
+        }
+
+        let container;
+        if (obj.overlay) {
+            container = this._overlaysList;
+        } else {
+            container = this._baseLayersList;
+        }
+        if (group_container) {
+            container = this.groups[group];
+        }
+        container.appendChild(label);
+
+        this._checkDisabledLayers();
+        return label;
+    }
+
+    onAdd(map) {
+        super.onAdd(map);
+        const el = this._container;
+        return this._container;
+    }
     // addToGroup()       // addTo(map) should not trigger this 
+    //const specificElement = document.querySelector('[data-user-id="123"]'); 
     // removeFromGroup()  // removeFrom(map) should not trigger this
-    // addGroup()         // 
-    // removeGroup()      //
+    // addGroup(group, parent[s])    // 
+    // removeGroup(group) //  This also removes the layers.
+    // may need to look at this._expandIfNotCollapsed()
+    // this._update() clears the control via .replaceChildren()
 }
-
-const TreeComponent_defaults = {
-        expandIcon: '',
-        collapseIcon: '',
-        startCollapsed: false,
-    }
-
-class TreeComponent {
-    // Options will actually point to SVG's, which for preference
-    // will be defined using :before in CSS
-
-    constructor(parentElement, data={}, options={}) {
-        Util.setOptions(this, TreeComponent_defaults);
-        Util.setOptions(this, options);
-        this._mama = parentElement;
-    }
-}
-
-export { LayersTree, LayersTree as default };
-
-
-//; (function ($, window, document, undefined) {
-//    /**
-//     * Default LayersTree  options.
-//    /**
-//     * LayersTree HTML templates.
-//     */
-//     // FIXME:  These defaults suck, becuase they use .innerHTML
-//     //         Can't have that.
-//    var templates = {
-//        treeview: '<div class="LayersTree"></div>',
-//        treeviewItem: '<div role="treeitem" class="list-group-item" data-bs-toggle="collapse"></div>',
-//        treeviewGroupItem: '<div role="group" class="list-group collapse" id="itemid"></div>',
-//        treeviewItemStateIcon: '<i class="state-icon"></i>',
-//        treeviewItemIcon: '<i class="item-icon"></i>'
-//    };
-//    /**
-//     * BsTreeview Plugin constructor.
-//     * @param {*} element
-//     * @param {*} options
-//     */
-//    function bstreeView(element, options) {
-//        this.element = element//;
-//        this.itemIdPrefix = element.id + "-item-";
-//        this.settings = $.extend({}, defaults, options);
-//        this.init();
-//    }
-//    /**
-//     * Avoid plugin conflict.
-//     */
-//    $.extend(bstreeView.prototype, {
-//        /**
-//         * LayersTree intialize.
-//         */
-//        init: function () {
-//            this.tree = [];
-//            this.nodes = [];
-//            // Retrieve LayersTree Json Data.
-//            if (this.settings.data) {
-//                if (this.settings.data.isPrototypeOf(String)) {
-//                    this.settings.data = $.parseJSON(this.settings.data);
-//                }
-//                this.tree = $.extend(true, [], this.settings.data);
-//                delete this.settings.data;
-//            }
-//            // Set main LayersTree class to element.
-//            $(this.element).addClass('LayersTree')//;
-//
-//            this.initData({ nodes: this.tree });
-//            var _this = this;
-//            this.build($(this.element), this.tree, 0);
-//            // Update angle icon on collapse
-//            $(this.element).on('click', '.list-group-item', function (e) {
-//                $('.state-icon', this)
-//                    .toggleClass(_this.settings.expandIcon)
-//                    .toggleClass(_this.settings.collapseIcon);
-//                // navigate to href if present
-//                }
-//                else
-//                {
-//                    // Toggle the data-bs-target. Issue with Bootstrap toggle and dynamic code
-//                    $($(this).attr("data-bs-target")).collapse('toggle');
-//                }
-//            });
-//        },
-//        /**
-//         * Initialize treeview Data.
-//         * @param {*} node
-//         */
-//        initData: function (node) {
-//            if (!node.nodes) return;
-//            var parent = node;
-//            var _this = this;
-//            $.each(node.nodes, function checkStates(index, node) //{
-//
-//                node.nodeId = _this.nodes.length;
-//                node.parentId = parent.nodeId;
-//                _this.nodes.push(node)//;
-//
-//                if (node.nodes) {
-//                    _this.initData(node);
-//                }
-//            });
-//        },
-//        /**
-//         * Build treeview.
-//         * @param {*} parentElement
-//         * @param {*} nodes
-//         * @param {*} depth
-//         */
-//        build: function (parentElement, nodes, depth) {
-//            var _this = this;
-//            // Calculate item padding.
-//            var leftPadding = _this.settings.parentsMarginLeft//;
-//
-//            if (depth > 0) {
-//                leftPadding = (_this.settings.indent + depth * _this.settings.indent).toString() + "rem;";
-//            }
-//            depth += 1;
-//            // Add each node and sub-nodes.
-//            $.each(nodes, function addNodes(id, node) {
-//                // Main node element.
-//                var treeItem = $(templates.treeviewItem)
-//                    .attr('data-bs-target', "#" + _this.itemIdPrefix + node.nodeId)
-//                    .attr('style', 'padding-left:' + leftPadding)
-//                    .attr('aria-level', depth);
-//                // Set Expand and Collapse icones.
-//                if (node.nodes) {
-//                    var treeItemStateIcon = $(templates.treeviewItemStateIcon)
-//                        .addClass((node.expanded)?_this.settings.expandIcon:_this.settings.collapseIcon);
-//                    treeItem.append(treeItemStateIcon);
-//                }
-//                // set node icon if exist.
-//                if (node.icon) {
-//                    var treeItemIcon = $(templates.treeviewItemIcon)
-//                        .addClass(node.icon);
-//                    treeItem.append(treeItemIcon);
-//                }
-//                // Set node Text.
-//                treeItem.append(node.text);
-//                // Reset node href if present
-//                if (node.href) {
-//                    treeItem.attr('href', node.href);
-//                }
-//                // Add class to node if present
-//                if (node.class) {
-//                    treeItem.addClass(node.class);
-//                }
-//                // Add custom id to node if present
-//                if (node.id) {
-//                    treeItem.attr('id', node.id);
-//                }
-//                // Attach node to parent.
-//                parentElement.append(treeItem);
-//                // Build child nodes.
-//                if (node.nodes) {
-//                    // Node group item.
-//                    var treeGroup = $(templates.treeviewGroupItem)
-//                        .attr('id', _this.itemIdPrefix + node.nodeId);
-//                    parentElement.append(treeGroup);
-//                    _this.build(treeGroup, node.nodes, depth);
-//                    if (node.expanded) {
-//                        treeGroup.addClass(_this.settings.expandClass);
-//                    }
-//                }
-//            });
-//        }
-//    });
-
-//    // A really lightweight plugin wrapper around the constructor,
-//    // preventing against multiple instantiations
-//    $.fn[pluginName] = function (options) {
-//        return this.each(function () {
-//            if (!$.data(this, "plugin_" + pluginName)) {
-//                $.data(this, "plugin_" +
-//                    pluginName, new bstreeView(this, options));
-//            }
-//        });
-//    };
-//})(jQuery, window, document);
-
+export { LayersTree as default };
 
 (function() {
     const our_CSS = `
 /*
  LayersTree.css
+   Injected to adoptedStyleSheets at LayersTree.mjs module load
 */
-.LayersTree .expand-icon:before {
-    content: '<svg></svg>';
-.LayersTree .collapse-icon:before {
-    content: '<svg></svg>';
 .LayersTree {
     position: relative;
-    display: -ms-flexbox;
     display: flex;
-    -ms-flex-direction: column;
     flex-direction: column;
     min-width: 0;
     word-wrap: break-word;
-    background-color: #fff;
+    background-color: transparent;
     background-clip: border-box;
-    border: 1px solid rgba(0,0,0,.125);
+    border: 1px solid rgba(1,1,1,.125);
     border-radius: .25rem;
-
     padding: 0;
     overflow: hidden;
+    min-height: 0;
+}
+.LayersTree .groupLabel {
+    position: relative;
+    left: 10px;
+}
+.LayersTree .textspan {
+    position: relative;
+    left: 10px;
+}
+.LayersTree .iconSpan {
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    background-repeat: no-repeat;
+    border: none;
+    background-color: transparent;
+    margin: auto;
+    position: relative;
+    /*
+    top: 4px;
+    left: 4px;
+    */
+}
+.LayersTree .iconSpan.collapsed {
+    background-image: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16"><path stroke="black" d="M13.5 5.3 7.2.6A3.3 3.3 90 002 3.3V12.5A3.3 3.3 90 007.2 15.2L13.5 10.6A3.3 3.3 90 0013.5 5.3Z" fill="gray"/></svg>');
+}
+.LayersTree .iconSpan.expanded {
+    background-image: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16"><path stroke="black" d="M13.5 5.3 7.2.6A3.3 3.3 90 002 3.3V12.5A3.3 3.3 90 007.2 15.2L13.5 10.6A3.3 3.3 90 0013.5 5.3Z" fill="gray"/></svg>');
+    transform: rotate(90deg);
+    transition: transform 0.6s;
 }
 
-.LayersTree .list-group {
-    margin-bottom: 0;
+.LayersTreeExpandable {
+  overflow: hidden;
 }
-
-.LayersTree .list-group-item {
-    border-radius: 0;
-    border-width: 1px 0 0 0;
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
-    cursor: pointer;
+.LayersTreeExpandable.collapsed {
+  display: none;
+  /* don't know if this will work */
+  transition: display 0.6s;
 }
-
-.LayersTree .list-group-item:hover {
-    background-color:#dee2e6;
+.LayersTreeExpandable.expanded {
+  display: inline-block;
+  /* don't know if this will work */
+  transition: display 0.6s;
 }
-
-.LayersTree > .list-group-item:first-child {
-    border-top-width: 0;
+/* this is for the glabel */
+.groupLabel {
+  cursor: pointer;
+  width: 100%;
+  border: none;
+  text-align: left;
+  outline: none;
+  font-size: 1em;
 }
-
-.LayersTree .state-icon {
-    margin-right: 8px;
-    width: 12px;
-    text-align: center;
-}
-.LayersTree .item-icon {
-    margin-right: 5px;
+.groupLabel:hover {
+  background-color: #ccc;
 }
 `;
 
@@ -280,3 +244,4 @@ try {
 }
 
 })();
+

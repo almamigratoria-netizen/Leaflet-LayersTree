@@ -25,7 +25,7 @@
       "imports": {
         "leaflet": "../../libs/leaflet/src/leaflet.js",
         "LayersTree": "./LayersTree.mjs",
-        "SVGMarker": "../Leaflet-SVGMarkers/SVGMarker.js"
+        "SVGMarker": "../SVGMarkers/SVGMarkers.mjs"
       }
     }
     </script>
@@ -41,17 +41,21 @@
       const basemap = new TileLayer(OSM);
       basemap.addTo(map);
 
-
+      // This is a slow way to get data, but it's just a demo
       const askOSM = async function(query) {
           const customMarker = function(point, latlng) {
               let ptype = point.properties.type || "unknown";
               let guide = {
-                  restaurant: { color: 'black', glyph: 'bx-fork-spoon' },
-                  bar: {color: 'yellow', glyph: 'bx-champagne', glyphColor: 'black'},
-                  cafe: {color: 'brown', glyph: 'bx-cup'},
-                  hospital: {color: 'red', glyph: 'bx-cursor-cell'},
-                  cinema: {color: 'blue', glyph: 'bx-video'},
-                  pub: {color: 'yellow'},
+                  restaurant: {color:'black', glyph:'bx-fork-spoon'},
+                  bar: {color:'black',glyph:'bx-beer'},
+                  cafe: {color:'black', glyph:'bx-cup'},
+                  pub: {color: 'black',glyph:'bx-beer',glyphColor:'yellow'},
+                  hospital: {color:'red', glyph:'bx-cursor-cell'},
+                  police: {color: 'white', glyph:'bx-man',glyphColor:'black'},
+                  dentist: {color:'green', glyph:'bx-tooth'},
+                  cinema: {glyph:'bx-video'},
+                  theatre: {glyph:'bx-group'},
+                  museum: {glyph:'bx-bank'},
               };
               let options = guide[ptype] || {};
               return new SVGMarker(latlng, options);
@@ -75,40 +79,62 @@
               }
           } catch (e) { console.log(`${e.name}: ${e.message}`) }
           return layer;
-//          ... read the docs on pointToLayer, add SVGMarkers
       }
 
       // Categories: civil services (police, hospitals, post office)
       //             Food (bars, cafe, restaurant, fast-food)
       //             Shopping (a, b, c)
       //             Entertainment (cinema, park)
+
+      // This is a slow way to get data, but it's just a demo
       const getSomeLayers = async function() {
           let overlays = {};
-          const list = [ 
-              "restaurant", "bar", "cafe", "hospital",
-              "cinema",
-                       ];
-          for (const amenity of list) {
+          const list = { 
+              food: ["restaurant", "bar", "cafe"],
+              civic: ["hospital", "dentist", "police" ],
+              fun: [ "cinema", "museum", "theater" ],
+          };
+          for (let category in list) {
+            for (let amenity of list[category]) {
+              // Once we get "addGroup" figured out, we
+              // can resolve the Promise instead of awaiting it.
               const layer = await askOSM(amenity);
-              if (layer) {
-                  overlays[amenity] = layer;
+              // Until we get categories figured out....
+              if (layer) { 
+                  layer._LTgroup = category;
+                  overlays[amenity] = layer; 
               }
+            }
           }
-          // return an array of layers/layerGroups
 
-          // by repeatedly calling askOSM
-          // we start with a flat array
-          // then we move on to JSON-like structures
+          // (sadly, very slowly) return an array of Layers
+          // by repeatedly calling askOSM()
           return overlays;
       }
+
+      // Display the map
       const center = map.getCenter();
-      const banner = '<h4>Dhaka, Bangladesh</h4>';
+      const banner = 'Looking up data for<br/><b>Dhaka, Bangladesh</b>';
       const tooltip = new Tooltip(center, {permanent: true, content: banner});
+      // Something to read while we wait for OpenStreetMap.
       tooltip.addTo(map);
       const overlays = await getSomeLayers();
       const baselayers = { 'OpenStreetMap': basemap };
       tooltip.removeFrom(map);
+      // So what we're passing is either an array, or an object like
+      // { name1: layer1, name2: layer2, name3: layer3 }
+      // So to maintain full compatibility _and_ get a tree structure, 
+      // we need to decorate the layer with
+      // hints as to where in the tree to put it.
+
       new LayersTree(baselayers, overlays).addTo(map);
+
+      // Q: what happens if we add layers we've already added?
+      // for (let key of Object.keys(overlays)) {
+      //     overlays[key].addTo(map);
+      // }
+      // A:  Layer gets turned on
+
     </script>
   </body>
 </html>
