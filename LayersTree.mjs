@@ -128,6 +128,7 @@ export class LayersTree extends Control.Layers {
         }
         if (group_container) {
             container = this.groups[group];
+            label.classList.add('LayersTreeIndent');
         }
         container.appendChild(label);
 
@@ -167,7 +168,6 @@ export { LayersTree as default };
 }
 .LayersTree .groupLabel {
     position: relative;
-    left: 10px;
 }
 .LayersTree .textspan {
     position: relative;
@@ -182,10 +182,6 @@ export { LayersTree as default };
     background-color: transparent;
     margin: auto;
     position: relative;
-    /*
-    top: 4px;
-    left: 4px;
-    */
 }
 .LayersTree .iconSpan.collapsed {
     background-image: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16"><path stroke="black" d="M13.5 5.3 7.2.6A3.3 3.3 90 002 3.3V12.5A3.3 3.3 90 007.2 15.2L13.5 10.6A3.3 3.3 90 0013.5 5.3Z" fill="gray"/></svg>');
@@ -195,7 +191,9 @@ export { LayersTree as default };
     transform: rotate(90deg);
     transition: transform 0.6s;
 }
-
+.LayersTreeIndent {
+    left: 10px;
+}
 .LayersTreeExpandable {
   overflow: hidden;
 }
