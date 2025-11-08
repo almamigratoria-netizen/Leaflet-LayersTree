@@ -13,7 +13,7 @@ const LayersTree_defaults = {
     // ROADMAP:(nested groups) GroupSeparator: '|',
     // ROADMAP:sanitizer: null,   // function to sanitize strings (must return 
                                   // trustedHTML).
-}
+};
 
 export class LayersTree extends Control.Layers {
     constructor(baselayers=[], overlays=[], options={}) {
@@ -23,9 +23,7 @@ export class LayersTree extends Control.Layers {
     }
 
     _toggleExpand(e) {
-        // Because of event progagation, this could have been triggered 
-        // on any of the three elements that comprise the label.
-        // Need to sort that out.
+        // Sort out event progagation
         const target = event.target;
         if (!target) { return false; }
         let realTarget = target;
@@ -100,7 +98,6 @@ export class LayersTree extends Control.Layers {
 
         const name = document.createElement('span');
         const group = obj.layer._LTgroup || undefined;
-        // how evil is .innerHTML?  Do we need to fix this?
         name.innerHTML = `${obj.name}`;
 
         // Helps from preventing layer control flicker when checkboxes 
@@ -118,10 +115,9 @@ export class LayersTree extends Control.Layers {
             this.groups = {};
         }
         let group_container = this.groups[group] || null;
-        // Create the group label
         // ROADMAP:  Nested groups
         if (group && !group_container) {
-            group_container = this._createGroupContainer(obj, group)
+            group_container = this._createGroupContainer(obj, group);
         }
 
         let container;
@@ -144,13 +140,8 @@ export class LayersTree extends Control.Layers {
         const el = this._container;
         return this._container;
     }
-    // addToGroup()       // addTo(map) should not trigger this 
-    //const specificElement = document.querySelector('[data-user-id="123"]'); 
-    // removeFromGroup()  // removeFrom(map) should not trigger this
-    // addGroup(group, parent[s])    // 
-    // removeGroup(group) //  This also removes the layers.
-    // may need to look at this._expandIfNotCollapsed()
-    // this._update() clears the control via .replaceChildren()
+    // removeGroup(groupName) // This should also remove the layers.
+    // const specificElement = document.querySelector('[data-user-id="123"]'); 
 }
 export { LayersTree as default };
 
