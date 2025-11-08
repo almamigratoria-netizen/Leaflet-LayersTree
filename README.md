@@ -8,7 +8,7 @@ decorated layers get added to the named group.
 It does not currently handle nested trees.
 
 ![ScreenShot](./Screenshot.png "Screen Shot")
-See the [demo](https://github.com/almamigratoria-netizen/Leaflet-LayersTree/)
+See the [demo](https://almamigratoria-netizen.github.io/Leaflet-LayersTree/)
 
 # Usage Example
 ```js
