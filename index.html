@@ -5,6 +5,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@2.0.0-alpha.1/dist/leaflet.css" />
     <link rel="stylesheet" href="./css/boxicons.css">
     <link rel='icon' href='favicon.svg'>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
       html, body, #mapdiv {
         height: 100%;
@@ -53,6 +54,7 @@
                   cinema: {glyph:'bx-video'},
                   theatre: {glyph:'bx-group'},
                   museum: {glyph:'bx-bank'},
+                  bakery: {color:'black',glyph:'bx-cupcake'},
               };
               let options = guide[ptype] || {};
               return new SVGMarker(latlng, options);
@@ -93,10 +95,7 @@
           };
           for (let category in list) {
             for (let amenity of list[category]) {
-              // Once we get "addGroup" figured out, we
-              // can resolve the Promise instead of awaiting it.
               const layer = await askOSM(amenity);
-              // Until we get categories figured out....
               if (layer) { 
                   layer._LTgroup = category;
                   overlays[amenity] = layer; 
@@ -118,19 +117,23 @@
       const overlays = await getSomeLayers();
       const baselayers = { 'OpenStreetMap': basemap };
       tooltip.removeFrom(map);
-      // So what we're passing is either an array, or an object like
-      // { name1: layer1, name2: layer2, name3: layer3 }
-      // So to maintain full compatibility _and_ get a tree structure, 
-      // we need to decorate the layer with
-      // hints as to where in the tree to put it.
 
-      new LayersTree(baselayers, overlays).addTo(map);
+      const LT = new LayersTree(baselayers, overlays);
+      LT.addTo(map);
 
-      // Q: what happens if we add layers we've already added?
-      // for (let key of Object.keys(overlays)) {
-      //     overlays[key].addTo(map);
-      // }
-      // A:  Layer gets turned on
+      // You can add layers to a group after it's added.
+      const bakeries = await askOSM('bakery');
+      bakeries._LTgroup = 'food';
+      LT.addOverlay(bakeries, 'bakeries');
+
+      // You don't _need_ to decorate the layers
+      const bus_stops = await askOSM('bus_stop');
+      LT.addOverlay(bus_stops, 'bus stops');
+
+      // You can add new categories
+      const car_rental = await askOSM('car_rental');
+      car_rental._LTgroup = 'Rent a car';
+      LT.addOverlay(car_rental, 'car rental');
 
     </script>
   </body>
