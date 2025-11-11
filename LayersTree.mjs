@@ -88,7 +88,7 @@ export class LayersTree extends Control.Layers {
         input.className = 'leaflet-control-layers-selector';
         input.defaultChecked = checked;
         if (!obj.overlay) {
-        	input.name = `leaflet-base-layers_${Util.stamp(this)}`;
+            input.name = `leaflet-base-layers_${Util.stamp(this)}`;
         }
 
         this._layerControlInputs.push(input);
@@ -134,6 +134,11 @@ export class LayersTree extends Control.Layers {
 
         this._checkDisabledLayers();
         return label;
+    }
+
+    _update() {
+        this.groups = [];
+        super._update();
     }
 
     onAdd(map) {
@@ -184,12 +189,14 @@ export { LayersTree as default };
     position: relative;
 }
 .LayersTree .iconSpan.collapsed {
-    background-image: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16"><path stroke="black" d="M13.5 5.3 7.2.6A3.3 3.3 90 002 3.3V12.5A3.3 3.3 90 007.2 15.2L13.5 10.6A3.3 3.3 90 0013.5 5.3Z" fill="gray"/></svg>');
+    background-image: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16"><path stroke="black" d="M13.5 5.3 7.2.6A3.3 3.3 90 002 3.3V12.5A3.3 3.3 90 007.2 15.2L13.5 10.6A3.3 3.3 90 0013.5 5.3Z" fill="white"/></svg>');
+    transform: rotate(0deg);
+    transition: transform 0.3s;
 }
 .LayersTree .iconSpan.expanded {
-    background-image: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16"><path stroke="black" d="M13.5 5.3 7.2.6A3.3 3.3 90 002 3.3V12.5A3.3 3.3 90 007.2 15.2L13.5 10.6A3.3 3.3 90 0013.5 5.3Z" fill="gray"/></svg>');
+    background-image: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16"><path stroke="black" d="M13.5 5.3 7.2.6A3.3 3.3 90 002 3.3V12.5A3.3 3.3 90 007.2 15.2L13.5 10.6A3.3 3.3 90 0013.5 5.3Z" fill="white"/></svg>');
     transform: rotate(90deg);
-    transition: transform 0.6s;
+    transition: transform 0.3s;
 }
 .LayersTreeIndent {
     left: 10px;
@@ -198,14 +205,14 @@ export { LayersTree as default };
   overflow: hidden;
 }
 .LayersTreeExpandable.collapsed {
+  height: 0px;
   display: none;
-  /* don't know if this will work */
-  transition: display 0.6s;
+  transition: all 0.6s;
 }
 .LayersTreeExpandable.expanded {
+  height: auto;
   display: inline-block;
-  /* don't know if this will work */
-  transition: display 0.6s;
+  transition: all 0.6s;
 }
 /* this is for the glabel */
 .groupLabel {
